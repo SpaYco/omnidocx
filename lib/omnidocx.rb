@@ -11,8 +11,8 @@ module Omnidocx
     DOCUMENT_FILE_PATH = 'word/document.xml'
     RELATIONSHIP_FILE_PATH = 'word/_rels/document.xml.rels'
     CONTENT_TYPES_FILE = '[Content_Types].xml'
-    HEADER_RELS_FILE_PATH = 'word/_rels/header1.xml.rels'
-    FOOTER_RELS_FILE_PATH = 'word/_rels/footer1.xml.rels'
+    HEADER_RELS_FILE_REGEX = /word\/_rels\/header\d+\.xml\.rels/
+    FOOTER_RELS_FILE_REGEX = /word\/_rels\/footer\d+\.xml\.rels/
     STYLES_FILE_PATH = "word/styles.xml"
     HEADER_FILE_PATH = "word/header1.xml"
     FOOTER_FILE_PATH = "word/footer1.xml"
@@ -242,7 +242,7 @@ module Omnidocx
           zip_file = Zip::File.new(doc_path)
 
           zip_file.entries.each do |e|
-            if [HEADER_RELS_FILE_PATH, FOOTER_RELS_FILE_PATH].include?(e.name)
+            if [e.name.match(HEADER_RELS_FILE_REGEX), e.name.match(FOOTER_RELS_FILE_REGEX)].any?
               hf_xml = Nokogiri::XML(e.get_input_stream.read)
               hf_xml.css("Relationship").each do |rel_node|
                 #media file names in header & footer need not be changed as they will be picked from the first document only and not the subsequent documents, so no chance of duplication
@@ -327,9 +327,16 @@ module Omnidocx
                   id_attr.value = new_id
                 else
                   # adding the extra relationship nodes for the media files to the relationship XML
-                  new_rel_node = "<Relationship Id=#{new_id} Type=#{node["Type"]} Target=#{target_val} />"
+                  new_rel_node = Nokogiri::XML::Node.new("Relationship", @rel_doc)
+                  new_rel_node["Id"] = new_id
+                  new_rel_node["Type"] = node["Type"]
+                  new_rel_node["Target"] = target_val
                   @rel_doc.at('Relationships').add_child(new_rel_node)
                 end
+
+                # add the image to word/media folder
+                zos.put_next_entry("word/#{target_val}")
+                zos << zip_file.read("word/#{target_val}")
               end
             end
 
@@ -360,7 +367,6 @@ module Omnidocx
             # not all <w:drawing> are images and only image has <a:blip>
             next if blip_node.nil?
             embed_attr = blip_node.attributes["embed"]
-            next if embed_attr.nil?
             i = rid_hash["doc#{doc_cnt}"][embed_attr.value]
             embed_attr.value = embed_attr.value.gsub(/[0-9]+/, i)
           end
