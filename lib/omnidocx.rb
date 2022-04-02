@@ -360,6 +360,7 @@ module Omnidocx
             # not all <w:drawing> are images and only image has <a:blip>
             next if blip_node.nil?
             embed_attr = blip_node.attributes["embed"]
+            next if embed_attr.nil?
             i = rid_hash["doc#{doc_cnt}"][embed_attr.value]
             embed_attr.value = embed_attr.value.gsub(/[0-9]+/, i)
           end
