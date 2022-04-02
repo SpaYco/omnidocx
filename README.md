@@ -8,7 +8,7 @@ This gem works for docx files generated from microsoft word as well as google do
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'omnidocx'
+gem 'omnidocx', git: 'https://github.com/SpaYco/omnidocx', branch: 'master'
 ```
 
 And then execute:
